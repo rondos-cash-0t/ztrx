@@ -1,0 +1,59 @@
+
+name: Build ztrx (Windows x64)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+    name: Build Release
+    runs-on: windows-2025
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Rust
+        shell: pwsh
+        run: |
+          rustup show
+          rustc --version
+          cargo --version
+
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build ztrx
+        shell: pwsh
+        run: cargo build --locked --release -p victory
+
+      - name: Package binaries
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist
+          Copy-Item target/release/victory.exe dist/
+          Copy-Item scripts/play.ps1 dist/
+          Copy-Item README.md dist/
+          Copy-Item LICENSE dist/
+          Copy-Item victory.example.toml dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ztrx-windows-x64
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
